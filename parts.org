@@ -1,0 +1,22 @@
+* IC
+  - Step-up converter (ADP1612)
+* Inductance
+  - L1: DO3316P-472ML (4.7µH)
+* Diode
+  - D1: MBRA340T3G (3A, 40V)
+* Resistors
+  - R1: RC0805FR-0730KL (30 kOhm)
+  - R2: CRCW080510K0FKEA (10 kOhm)
+  - R_COMP: RC0805JR-0712KL (12 kOhm)
+* Capacitors
+  - C_COMP: ECJ-2VB1H122K (1200 pF)
+  - C_IN: GRM21BR61C106KE15L (10 µF)
+  - C_OUT: GRM32DR71E106KA12L (10 µF)
+  - C_SS: ECJ-2VB1H333K (33 nF)
+
+* Alternative:
+  1 x MAX756
+  2 x 100uF Capacitors
+  2 x 0.1uF Capactitors
+  1 x 1N5817 Schottky Diode
+  1 x 22uH Power Inductor

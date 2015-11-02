@@ -1,0 +1,5 @@
+TRG_ON   = 1
+TRG_OFF  = 2
+RFI_ON   = 3
+RFI_OFF  = 4
+SET_POS  = 5

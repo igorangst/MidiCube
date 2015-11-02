@@ -1,0 +1,30 @@
+* Protocol
+** Messages from App to Gun:
+   - RUN: start sensor readings
+   - STP: stop sensor readings
+   - RST: reset positions
+   - CAL: calibrate gyroscope to rest position
+   - GET: send status once (trigger, position, and mode)
+** Messages from Gun to App:
+   - RUN OK: answers a RUN request
+   - STP OK: answers a STP request
+   - RST OK: answers a RST request
+   - CAL OK: answers a CAL request
+   - POS: position update
+   - TRG ON: trigger on event
+   - TRG OFF: trigger off event
+   - RFI ON: rapid fire on event
+   - RFI OFF: rapid fire off event
+   - ERR: something went wrong
+   
+* Mapping
+** Mode 1 (single shot):
+   - X: pitch on trigger / pitch bend while trigger is on or
+        CC1
+   - Y: CC2
+   - Z: CC3
+** Mode 2 (rapid fire):
+   - X: pitch or
+        CC1
+   - Y: CC2
+   - Z: CC3

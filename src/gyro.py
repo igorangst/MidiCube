@@ -48,7 +48,6 @@ if not com.startGun(sock):
 
 sync.qLock.acquire()
 sync.queue.put( (command.RFI_ON, None) )
-sync.queue.put( (command.TRG_ON, None) )
 sync.queueEvent.set()
 sync.qLock.release()
 

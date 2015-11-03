@@ -46,10 +46,17 @@ class Scheduler (threading.Thread):
             return int(interp(centered, [-90,90], [0, 16383]))
 
     def printStatus(self):
-        sys.stdout.write("[X:%6.1f Y:%6.1f Z:%6.1f]\r" 
+        def bool2str(b):
+            if b:
+                return '*'
+            else:
+                return ' '
+        sys.stdout.write("[X:%6.1f Y:%6.1f Z:%6.1f] [%s] [%s]\r" 
                          % (self.state.gyro[0], 
                             self.state.gyro[1], 
-                            self.state.gyro[2] ))
+                            self.state.gyro[2], 
+                            bool2str(self.state.trigger),
+                            bool2str(self.state.rapidFire)))
         sys.stdout.flush()
 
     def stopNote(self):
@@ -87,14 +94,15 @@ class Scheduler (threading.Thread):
                 if self.dispatcher:
                     self.dispatcher.cancel()
                 self.state.bpm = newBPM
-                duration = 60.0 / newBPM
-                now = time.time()
-                elapsed = now - self.lastStrike
-                if elapsed > duration: # preemption
-                    self.playNote() 
-                else:                  # delay next strike
-                    rest = duration - elapsed
-                    self.dispatcher = self.scheduleNote(rest)
+                if self.state.trigger:
+                    duration = 60.0 / newBPM
+                    now = time.time()
+                    elapsed = now - self.lastStrike
+                    if elapsed > duration: # preemption
+                        self.playNote() 
+                    else:                  # delay next strike
+                        rest = duration - elapsed
+                        self.dispatcher = self.scheduleNote(rest)
         newCCy = int(interp(y, [-90, 90], [0, 127]))
         if newCCy <> self.state.cc[0]:
             self.state.cc[0] = newCCy

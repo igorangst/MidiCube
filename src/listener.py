@@ -15,18 +15,26 @@ class Listener (threading.Thread):
         threading.Thread.__init__(self)
         self.sock  = sock
         self.ready = select.select([sock], [], [], 1)
+        self.pendingMsg = ''
 
     def readSock(self):
-        resp = ''
+        resp = self.pendingMsg
         while not sync.terminate.isSet():
+            pos = resp.find('\n')
+            if pos > 0:
+                if pos == len(resp) - 1:
+                    self.pendingMsg = ''
+                    return resp.strip()
+                else:
+                    prefix = resp[0:pos]
+                    self.pendingMsg = resp[pos+1:]
+                    return prefix.strip()
             try:
                 data = self.sock.recv(1024)
             except:
                 time.sleep(0.001)
                 continue
             resp += data
-            if resp.endswith('\n'):
-                return resp.strip()
         return None
 
     def dummyRead(self):
@@ -82,5 +90,5 @@ class Listener (threading.Thread):
                 cmd = (command.SET_POS, (x,y,z))
                 self.putCommand(cmd)
                 continue
-            print "ILLEGAL MESSAGE: " + msg
+            print "ILLEGAL MESSAGE: '" + msg + "'"
         print "stopping listener"

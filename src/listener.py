@@ -4,6 +4,7 @@ import time
 import re
 import threading
 import select
+import logging
 
 import sync
 import command
@@ -44,6 +45,7 @@ class Listener (threading.Thread):
     def putCommand(self, cmd):
         sync.qLock.acquire()
         sync.queue.put(cmd)
+        logging.debug("send command %s" % command.cmd2str(cmd))
         sync.qLock.release()
         sync.queueEvent.set()
 
@@ -53,7 +55,7 @@ class Listener (threading.Thread):
             msg = self.readSock()
             if msg is None:
                 continue
-           # print msg
+            logging.debug("bluetooth message: %s" % msg)
             if msg == 'RUN OK':
                 sync.runOK.set()
                 continue
@@ -84,11 +86,11 @@ class Listener (threading.Thread):
                 continue
             m = re.search('POS (-?\d+\.\d+),(-?\d+\.\d+),(-?\d+\.\d+)', msg)
             if m:
-                x = float(m.group(1));
-                y = float(m.group(2));
-                z = float(m.group(3));
+                x = -float(m.group(3)); # FIXME: changed order of readings
+                y = float(m.group(1));
+                z = float(m.group(2));
                 cmd = (command.SET_POS, (x,y,z))
                 self.putCommand(cmd)
                 continue
-            print "ILLEGAL MESSAGE: '" + msg + "'"
+            logging.warning("illegal message  '%s'" % msg)
         print "stopping listener"

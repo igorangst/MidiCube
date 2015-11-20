@@ -20,6 +20,8 @@ class Note:
     def __init__(self, pitch, velocity=127):
         self.pitch = pitch
         self.velocity = velocity
+    def __str__(self):
+        return "(pitch:%i, vel:%i)" % (self.pitch, self.velocity)
 
 
 def ccEvent(cc, val, chan=1):

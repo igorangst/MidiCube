@@ -2,18 +2,20 @@ import time
 import sys
 import signal
 import alsaseq
+import logging
 
 from listener import Listener
 from scheduler import Scheduler
+
 import sync
 import com
 import command
 
-# signal.signal(signal.SIGINT, sigint_handler)
-
+# logging.basicConfig(filename='debug.log',level=logging.DEBUG)
 
 sock = com.connect('20:14:12:17:01:67')
 if not sock:
+    logging.error('connection to laser gun failed')
     exit(-1)
 
 alsaseq.client( 'LaserGun', 0, 1, False )
@@ -45,17 +47,6 @@ if not com.calibrateGun(sock):
     terminate()
 if not com.startGun(sock):
     terminate()
-
-sync.qLock.acquire()
-sync.queue.put( (command.RFI_ON, None) )
-sync.queueEvent.set()
-sync.qLock.release()
-
-# try:
-#     while True:
-#         time.sleep(1)
-# except:
-#     terminate()
 
 try:
     while True:

@@ -39,3 +39,42 @@ def noteOffEvent(note, chan=1):
 def pitchBendEvent(pitch, chan=1):
     return (13, 0, 0, 253, (0, 0), (0, 0), (0, 0), 
             (0, 61, 0, 0, 0, pitch-8192))
+
+majorScale = [0, 2, 4, 5, 7, 9, 11]
+minorScale = [0, 2, 3, 5, 7, 8, 10]
+
+noteNames = ['c', 'c#', 'd', 'd#', 'e', 'f', 
+             'f#', 'g', 'g#', 'a', 'a#', 'b']
+basicNote = {'c' : 36,
+             'c#': 37,
+             'd' : 38,
+             'd#': 39, 
+             'e' : 40,
+             'f' : 41,
+             'f#': 42, 
+             'g' : 43,
+             'g#': 44,
+             'a' : 45,
+             'a#': 46,
+             'b' : 47,
+             'h' : 47}
+
+# get MIDI code for a note restricted to a specific scale.
+# note = 0 returns the basic note, negative and positive values 
+# will move down and up on the scale
+def noteOnScale(scale = None, note = 0):
+    if scale is None:
+        # chromatic scale
+        return basicNote.get('c') + note
+
+    isMajor = scale[0].isupper()
+    scale = scale.lower()
+    base = basicNote.get(scale, 36)
+    baseOctave = base + 12 * (note / 7)
+    if isMajor:
+        # major scale
+        return baseOctave + majorScale[note % 7]
+    else:
+        # minor scale
+        return baseOctave + minorScale[note % 7]
+

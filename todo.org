@@ -1,0 +1,43 @@
+* Hardware
+  - debounce trigger 
+  - connect push button to something useful
+    
+* Software
+** nice display
+** better bluetooth connection manager
+** systematic controller mapping:
+   provide command line options to freely configure the behavior for
+   the three axes in both modes:
+   -x -y -z : adds behavior in one-shot mode
+   -X -Y -Z : adds behavior in rapid-fire mode
+
+   These can be combined with any of the following values:
+   note    : select pitch of played note
+   bend    : pitch bend control
+   vel     : velocity of played note
+   speed   : set speed for rapid fire
+   cc#<i>  : MIDI controller #i  
+
+   Further options that control the behavior:
+   -s --scale D# : restricts played notes to the D# major scale
+   -g --gliss    : in one-shot mode, plays a new note once the  
+               associated axis moves by a sufficient angle
+   -a --arp      : arpeggio (see below) in one-shot mode
+   -A --Arp      : arpeggio (see below) in rapid-fire mode
+   -o --oct      : number of octaves spanned by 90 degrees 
+  
+
+** arpeggio mode: 
+   - Plays notes that are read from an ALSA input port.
+   - In one-shot mode, the input notes will just replace the scale
+   - In rapid-fire mode, auto arpeggio is activated unless selected otherwise
+** drift:
+   compensate drift in estimated state. For controllers and pitch
+   bend, this is no longer a problem, since the new center value is
+   chosen when the trigger is pressed. The only remaining problem is
+   for pitch, since we cannot just choose a new center (otherwise each
+   note will be the same).
+
+   Possible solution: If we assume that the range is restricted to +/-
+   90 degrees, if we encounter a value outside this range, move the
+   current window such that the measured value is its new max/min edge.

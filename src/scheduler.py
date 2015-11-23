@@ -10,6 +10,7 @@ from alsamidi import *
 
 import sync
 import command
+import arpeg
 
 from util import *
 from params import *
@@ -38,6 +39,7 @@ class Scheduler (threading.Thread):
         self.dispatcher = None
         self.lastStrike = None
         self.state = State()
+        self.arpeg = arpeg.Arpeggiator()
         ccs = []
         for i in range(0,3): # collect all controllers
             ccs += self.params.controllersOSM[i]

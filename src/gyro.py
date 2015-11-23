@@ -93,7 +93,7 @@ def parseArgs(argv):
                 exit(2)
     shortOpts = "x:y:z:X:Y:Z:s:gaAo:m:"
     longOpts = ["x=","y=","z=","X=","Y=","Z=","scale=",
-                "gliss","arp","Arp","oct=","mac=","midiout="]
+                "gliss","arp","Arp","oct=","mac=","midiout=","midiin="]
     try:
         opts, args = getopt.getopt(argv, shortOpts, longOpts)
     except getopt.GetoptError:
@@ -131,6 +131,13 @@ def parseArgs(argv):
             else:
                 usage()
                 exit(2)
+        elif opt == "--midiin":
+            m = re.match('(\d+):(\d+)', arg)
+            if m:
+                p.alsaIn = (int(m.group(1)), int(m.group(2)))
+            else:
+                usage()
+                exit(2)
         else:
             usage()
             exit(2)
@@ -144,10 +151,13 @@ args.append('20:14:12:17:01:67')
 params = parseArgs(args)
 
 # initialize ALSA 
-alsaseq.client( 'LaserGun', 0, 1, False )
+alsaseq.client( 'LaserGun', 1, 1, False )
 if params.alsaOut is not None:
     (client, port) = params.alsaOut
     alsaseq.connectto(0, client, port)
+if params.alsaIn is not None:
+    (client, port) = params.alsaIn
+    alsaseq.connectfrom(0, client, port)
 
 # connect to bluetooth device
 sock = com.connect(params.btMAC)

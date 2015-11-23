@@ -18,6 +18,7 @@ class Params:
     btMAC = None
     btName = "LaserGun"
     alsaOut = None
+    alsaIn = None
 
     # exclusive behavior associated to at most one of the three axes, for
     # one-shot mode and for rapid-fire mode

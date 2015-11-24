@@ -22,7 +22,7 @@ class Arpeggiator:
         try:
             self.notes.remove(note)
         except ValueError:
-            # skip
+            skip
 
     def setUp(self):
         self.playUp = True
@@ -42,14 +42,33 @@ class Arpeggiator:
         self.pattern = pattern
         self.index = 0
 
-    def getNote(self):
+    def extrapolate(self, index):
+        n = len(self.notes)
+        o = 1 + (self.notes[-1] - self.notes[1]) / 12
+        base = self.notes[index % n]
+        note = base + 12 * o * (index / n)
+        return min(127, max(0, note))
+
+    def getNote(self, shift=0):
+        if len(self.notes) == 0:
+            return None
         if self.pattern is not None:
             i = self.pattern[self.index]
         else:
             i = self.index
-        return self.notes[min(i, len(self.notes)-1)]
+        shifted = i + shift
+        if shifted >= 0 and shifted < len(self.notes):
+            return self.notes[shifted]
+        else:
+            return self.extrapolate(shifted)
 
-    def nextNote(self):
+    def reset(self):
+        if self.playDown:
+            self.index = len(self.notes) - 1
+        else:
+            self.index = 0
+        
+    def next(self):
         if len(self.notes) == 0:
             return None
         if self.playUp:
@@ -70,14 +89,18 @@ class Arpeggiator:
             return self.notes[pos]
 
 
-arp = Arpeggiator()
-arp.pushNote(1)
-arp.pushNote(22)
-arp.pushNote(333)
-arp.pushNote(4444)
+# arp = Arpeggiator()
+# arp.pushNote(36)
+# arp.pushNote(40)
+# arp.pushNote(43)
 
-arp.setPattern([0,-1,0,-2])
+# # arp.setPattern([0,-1,0,-2])
 
-for i in range(20):
-    print arp.getNote()
-    arp.nextNote()
+
+# for i in range(6):
+#     for j in range(3):
+#         print arp.getNote(-i)
+#         arp.next()
+#     print
+
+        

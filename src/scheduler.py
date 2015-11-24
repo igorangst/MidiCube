@@ -53,27 +53,38 @@ class Scheduler (threading.Thread):
                 return '*'
             else:
                 return ' '
-        sys.stdout.write("[X:%6.1f Y:%6.1f Z:%6.1f] [TRG: %s] [RFI: %s] [BEND: %5i]\r" 
+        sys.stdout.write("[X:%6.1f Y:%6.1f Z:%6.1f] [TRG: %s] [RFI: %s] [BEND: %5i]\r (Arp: %i)" 
                          % (self.state.gyro[0], 
                             self.state.gyro[1], 
                             self.state.gyro[2], 
                             bool2str(self.state.trigger),
                             bool2str(self.state.rapidFire),
-                            self.state.bend))
+                            self.state.bend, len(self.arpeg.notes)))
         sys.stdout.flush()
 
     def pitch(self):
-        if self.params.scale is None:
-            noteRange = 12 * self.params.octaves
-        else:
-            noteRange = 7 * self.params.octaves
         axis = self.params.setNote[self.state.mode()]                    
-        if axis == NO_AXIS:
-            return 36   # MIDI value for C2
+        if self.state.rapidFire and self.params.arpRFI:
+            # Arpeggiator
+            if axis != NO_AXIS:
+                angle = self.state.gyro[axis] - self.state.pitchOffs
+                shift = int(interp(angle, [-90,90], [-8,8]))
+            else:
+                shift = 0
+            note = self.arpeg.getNote(shift)
+            return note
         else:
-            noteIndex = int(interp(self.state.gyro[axis] - self.state.pitchOffs, 
-                                   [-90,90], [-noteRange, noteRange]))
-            return noteOnScale(self.params.scale, noteIndex)
+            # Standard pitch select
+            if self.params.scale is None:
+                noteRange = 12 * self.params.octaves
+            else:
+                noteRange = 7 * self.params.octaves
+            if axis == NO_AXIS:
+                return 36   # MIDI value for C2
+            else:
+                angle = self.state.gyro[axis] - self.state.pitchOffs
+                noteIndex = int(interp(angle, [-90,90], [-noteRange, noteRange]))
+                return noteOnScale(self.params.scale, noteIndex)
 
     def centerPitch(self):
         axis = self.params.setNote[self.state.mode()]
@@ -93,11 +104,13 @@ class Scheduler (threading.Thread):
     def playNote(self):
         if self.state.lastNote:
             self.stopNote()
+            self.arpeg.next()
         note = Note(self.pitch())
-        alsaseq.output(noteOnEvent(note))
-        logging.debug("play note %s" % str(note))
+        if note.valid():
+            alsaseq.output(noteOnEvent(note))
+            logging.debug("play note %s" % str(note))
+            self.state.lastNote = note
         self.lastStrike = time.time()
-        self.state.lastNote = note
         if self.state.rapidFire and self.state.trigger: 
             duration = 60.0 / self.bpm()
             self.dispatcher = self.scheduleNote(duration)
@@ -202,6 +215,7 @@ class Scheduler (threading.Thread):
                         self.state.trigger = True
                         self.resetBend()
                         self.state.center = self.state.gyro # FIXME: reset controls?
+                        self.arpeg.reset()
                         self.playNote()                    
                 elif cmd == command.TRG_OFF:
                     logging.debug("received TRG_OFF")
@@ -219,6 +233,7 @@ class Scheduler (threading.Thread):
                         # FIXME: recenter pitch on mode change for now
                         self.centerPitch()
                         if self.state.trigger:
+                            self.arpeg.reset()
                             self.playNote()
                 elif cmd == command.RFI_OFF:
                     logging.debug("received RFI_OFF")
@@ -236,6 +251,12 @@ class Scheduler (threading.Thread):
                     logging.debug("received SET_POS")
                     (x, y, z) = params
                     self.setPos(x, y, z)
+                elif cmd == command.PSH_NOTE:
+                    self.arpeg.pushNote(params)
+                    logging.debug("arpeggiator push note %i" % params)
+                elif cmd == command.POP_NOTE:
+                    self.arpeg.popNote(params)
+                    logging.debug("arpeggiator pop note %i" % params)
                 else:
                     logging.warning("Illegal command in queue")
         print "stopping scheduler"

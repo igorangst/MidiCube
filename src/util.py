@@ -22,7 +22,14 @@ class Note:
         self.velocity = velocity
     def __str__(self):
         return "(pitch:%i, vel:%i)" % (self.pitch, self.velocity)
-
+    def valid(self):
+        if self.pitch is None:
+            return False
+        if self.pitch < 0:
+            return False
+        if self.pitch > 127:
+            return False
+        return True
 
 def ccEvent(cc, val, chan=1):
     return (10, 0, 0, 253, (0, 0), (0, 0), (0, 0), 

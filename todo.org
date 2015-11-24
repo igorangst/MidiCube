@@ -30,7 +30,18 @@
 ** arpeggio mode: 
    - Plays notes that are read from an ALSA input port.
    - In one-shot mode, the input notes will just replace the scale
-   - In rapid-fire mode, auto arpeggio is activated unless selected otherwise
+   - In rapid-fire mode, auto arpeggio is activated in one of the following modes:
+     - up: plays notes in ascending order
+     - down: plays notes in descending order
+     - triangle: plays notes up and down
+     - pattern: plays notes according to a pattern
+   - In rapid fire mode, if there is a pitch axis, the pattern will be shifted
+   - Note indices outside the played notes will be extrapolated
+     
+** Mute:
+   - output controller (and pitch bend) events only, e.g. for filter
+     modulation of a recorded sequence
+
 ** drift:
    compensate drift in estimated state. For controllers and pitch
    bend, this is no longer a problem, since the new center value is

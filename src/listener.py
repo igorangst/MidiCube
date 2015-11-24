@@ -50,7 +50,7 @@ class Listener (threading.Thread):
         sync.queueEvent.set()
 
     def run(self):
-        print "starting listener"
+        print "starting bluetooth listener"
         while not sync.terminate.isSet():
             msg = self.readSock()
             if msg is None:
@@ -93,4 +93,4 @@ class Listener (threading.Thread):
                 self.putCommand(cmd)
                 continue
             logging.warning("illegal message  '%s'" % msg)
-        print "stopping listener"
+        print "stopping bluetooth listener"

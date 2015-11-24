@@ -11,6 +11,7 @@ class alsaInput (threading.Thread):
         threading.Thread.__init__(self)
 
     def run(self):
+        print "starting alsa listener"
         while not sync.terminate.isSet():
             if alsaseq.inputpending():
                 event = alsaseq.input()
@@ -20,7 +21,6 @@ class alsaInput (threading.Thread):
                 elif event[0] == 7: # note off event
                     cmd = (POP_NOTE, pitch)
                 else:
-                    time.sleep(0.005)
                     continue
                 sync.qLock.acquire()
                 sync.queue.put(cmd)
@@ -30,3 +30,4 @@ class alsaInput (threading.Thread):
             else:
                 time.sleep(0.005)
                 continue
+        print "stopping alsa listener"

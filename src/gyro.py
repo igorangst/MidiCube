@@ -10,6 +10,7 @@ import re
 
 from listener import Listener
 from scheduler import Scheduler
+from alsain import alsaInput
 from params import *
 
 import sync
@@ -32,6 +33,7 @@ def terminate():
     sync.queueEvent.set()
     scheduler.join()
     listener.join()
+    alsain.join()
     sys.exit(0)
 
 def usage():
@@ -39,6 +41,7 @@ def usage():
 Global options:
 -m --mac              bluetooth device address of laser gun
    --midiout <id:p>   connect to midi client id on input port p
+   --midiin  <id:p>   connect to midi client id on output port p 
 
 Options for mapping the axes to behavior:
 -x -y -z   adds behavior in one-shot mode
@@ -167,9 +170,11 @@ if not sock:
 
 listener = Listener(sock)
 scheduler = Scheduler(params)
+alsain = alsaInput()
 
 scheduler.start()
 listener.start()
+alsain.start()
 time.sleep(1)
 
 com.stopGun(sock)

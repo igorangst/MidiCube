@@ -1,5 +1,7 @@
 import signal
 import time
+import subprocess
+import re
 
 class TimeoutError(Exception):
     pass
@@ -85,3 +87,12 @@ def noteOnScale(scale = None, note = 0):
         # minor scale
         return baseOctave + minorScale[note % 7]
 
+
+
+# get a dictionary of all active MIDI devices, mapping names to device numbers
+def midiDevices():
+    lines = subprocess.check_output(["aconnect", "-i"])
+    for line in lines.split('\n'):
+        m = re.search("client (\d+): '([a-zA-Z0-9\s]+)'", line)
+        if m:
+            print m.group(1) + " => " + m.group(2)

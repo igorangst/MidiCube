@@ -19,15 +19,16 @@ class Params:
     btName = "LaserGun"
     alsaOut = None
     alsaIn = None
+    midiChan = 1
 
     # exclusive behavior associated to at most one of the three axes, for
     # one-shot mode and for rapid-fire mode
-    setNote     = [X_AXIS, NO_AXIS]
-    setBend     = [X_AXIS, NO_AXIS]
+    setNote     = [X_AXIS, Y_AXIS]
+    setBend     = [NO_AXIS, NO_AXIS]
     setVelocity = [NO_AXIS, NO_AXIS]
     setSpeed    = X_AXIS
 
     # controllers associated to the axes, for one-shot and rapid-fire mode
     # TODO: use negative controller ids for reverse sense
-    controllersOSM = [[],[2],[3]]
-    controllersRFI = [[],[2],[3]]
+    controllersOSM = [[],[],[]]
+    controllersRFI = [[],[],[]]

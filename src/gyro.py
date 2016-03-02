@@ -42,6 +42,7 @@ Global options:
 -m --mac              bluetooth device address of laser gun
    --midiout <id:p>   connect to midi client id on input port p
    --midiin  <id:p>   connect to midi client id on output port p 
+-c --chan <i>         MIDI output channel (default: 1)
 
 Options for mapping the axes to behavior:
 -x -y -z   adds behavior in one-shot mode
@@ -94,8 +95,8 @@ def parseArgs(argv):
             else:
                 usage()
                 exit(2)
-    shortOpts = "x:y:z:X:Y:Z:s:gaAo:m:"
-    longOpts = ["x=","y=","z=","X=","Y=","Z=","scale=",
+    shortOpts = "x:y:z:X:Y:Z:s:gaAo:m:c:"
+    longOpts = ["x=","y=","z=","X=","Y=","Z=","scale=", "chan=",
                 "gliss","arp","Arp","oct=","mac=","midiout=","midiin="]
     try:
         opts, args = getopt.getopt(argv, shortOpts, longOpts)
@@ -127,6 +128,8 @@ def parseArgs(argv):
             setBehavior(RFI_MODE, Z_AXIS, arg)        
         elif opt in ["-m", "--mac"]:
             p.btMAC = arg
+        elif opt in ["-c", "--chan"]:
+            p.midiChan = int(arg)
         elif opt == "--midiout":
             m = re.match('(\d+):(\d+)', arg)
             if m:

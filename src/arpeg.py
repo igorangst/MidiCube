@@ -22,7 +22,7 @@ class Arpeggiator:
         try:
             self.notes.remove(note)
         except ValueError:
-            skip
+            empty = True # dummy foo
 
     def setUp(self):
         self.playUp = True

@@ -107,7 +107,7 @@ class Scheduler (threading.Thread):
             self.arpeg.next()
         note = Note(self.pitch())
         if note.valid():
-            alsaseq.output(noteOnEvent(note))
+            alsaseq.output(noteOnEvent(note, chan=self.params.midiChan))
             logging.debug("play note %s" % str(note))
             self.state.lastNote = note
         self.lastStrike = time.time()
@@ -159,14 +159,14 @@ class Scheduler (threading.Thread):
         newBend = self.bend()
         if self.state.bend != newBend:
             self.state.bend = newBend
-            alsaseq.output(pitchBendEvent(newBend))        
+            alsaseq.output(pitchBendEvent(newBend, chan=self.params.midiChan))        
 
     def resetBend(self):
         axis = self.params.setBend[self.state.mode()]
         if axis != NO_AXIS:
             self.state.bendOffs = self.state.gyro[axis]
             self.state.bend = 8192
-            alsaseq.output(pitchBendEvent(self.state.bend))
+            alsaseq.output(pitchBendEvent(self.state.bend, chan=self.params.midiChan))
 
     def setControllers(self):
         def setAxisControllers(axis):
@@ -180,7 +180,7 @@ class Scheduler (threading.Thread):
                 oldValue = self.state.ccs[k]
                 if newValue != oldValue:
                     self.state.ccs[k] = newValue
-                    alsaseq.output(ccEvent(k, newValue))
+                    alsaseq.output(ccEvent(k, newValue, chan=self.params.midiChan))
         for axis in range(0,3):
             setAxisControllers(axis)                                    
 

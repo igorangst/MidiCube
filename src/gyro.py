@@ -61,6 +61,8 @@ Further options that control the behavior:
                 associated axis moves by a sufficient angle
 -a --arp        arpeggio in one-shot mode
 -A --Arp        arpeggio in rapid-fire mode
+-q --quant      use MIDI clock input for quantization (this 
+                only affects rapid fire mode)
 -o --oct <k>    number of octaves spanned by 90 degrees 
 """
 
@@ -95,8 +97,8 @@ def parseArgs(argv):
             else:
                 usage()
                 exit(2)
-    shortOpts = "x:y:z:X:Y:Z:s:gaAo:m:c:"
-    longOpts = ["x=","y=","z=","X=","Y=","Z=","scale=", "chan=",
+    shortOpts = "x:y:z:X:Y:Z:s:gqaAo:m:c:"
+    longOpts = ["x=","y=","z=","X=","Y=","Z=","scale=", "chan=", "quant",
                 "gliss","arp","Arp","oct=","mac=","midiout=","midiin="]
     try:
         opts, args = getopt.getopt(argv, shortOpts, longOpts)
@@ -110,6 +112,8 @@ def parseArgs(argv):
             p.arpOSM = True
         elif opt in ["-A", "--Arp"]:
             p.arpRFI = True
+        elif opt in ["-q", "--quant"]:
+            p.quant = True
         elif opt in ["-o", "--oct"]:
             p.octaves = int(arg)
         elif opt in ["-s", "--scale"]:

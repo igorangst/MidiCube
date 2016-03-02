@@ -9,9 +9,10 @@ RFI_MODE = 1
 class Params:
     # global options
     scale = None       # restrict notes to scale (in both modes)
-    gliss = False      # glissando (only in one-shot mode)
+    gliss = False      # glissando (only one-shot mode)
+    quant = False      # quantise wrt MIDI clock (only rapid-fire mode)
     arpRFI = False     # arpeggio in rapid-fire mode
-    arpOSM = False     # arpeggio in one-shot mode
+    arpOSM = False     # arpeggio in one-shot mode    
     octaves = 1        # number of octaves spanned by a 90 degree movement
     
     # bluetooth and alsa com options

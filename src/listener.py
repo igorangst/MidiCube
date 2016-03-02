@@ -42,12 +42,12 @@ class Listener (threading.Thread):
         time.sleep(0.5)
         return 'RUN OK'
 
-    def putCommand(self, cmd):
-        sync.qLock.acquire()
-        sync.queue.put(cmd)
-        logging.debug("send command %s" % command.cmd2str(cmd))
-        sync.qLock.release()
-        sync.queueEvent.set()
+    # def putCommand(self, cmd):
+    #     sync.qLock.acquire()
+    #     sync.queue.put(cmd)
+    #     logging.debug("send command %s" % command.cmd2str(cmd))
+    #     sync.qLock.release()
+    #     sync.queueEvent.set()
 
     def run(self):
         print "starting bluetooth listener"
@@ -70,19 +70,19 @@ class Listener (threading.Thread):
                 continue
             if msg == 'TRG ON':
                 cmd = (command.TRG_ON, None)
-                self.putCommand(cmd)
+                sync.putCommand(cmd)
                 continue
             if msg == 'TRG OFF':
                 cmd = (command.TRG_OFF, None)
-                self.putCommand(cmd)
+                sync.putCommand(cmd)
                 continue            
             if msg == 'RFI ON':            
                 cmd = (command.RFI_ON, None)
-                self.putCommand(cmd)
+                sync.putCommand(cmd)
                 continue
             if msg == 'RFI OFF':            
                 cmd = (command.RFI_OFF, None)
-                self.putCommand(cmd)
+                sync.putCommand(cmd)
                 continue
             m = re.search('POS (-?\d+\.\d+),(-?\d+\.\d+),(-?\d+\.\d+)', msg)
             if m:
@@ -90,7 +90,7 @@ class Listener (threading.Thread):
                 y = float(m.group(1));
                 z = float(m.group(2));
                 cmd = (command.SET_POS, (x,y,z))
-                self.putCommand(cmd)
+                sync.putCommand(cmd)
                 continue
             logging.warning("illegal message  '%s'" % msg)
         print "stopping bluetooth listener"

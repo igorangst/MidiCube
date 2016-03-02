@@ -25,7 +25,10 @@ class State:
     bendOffs  = 0.0             # offset for pitch bend
     pitchOffs = 0.0             # offset for note pitch (reset on mode change)
     bend      = 8192            # pitch bend value
-    bpm       = 120             # rapid fire speed
+    bpm       = 120             # rapid fire speed (free-wheeling)
+    tickMod   = 12              # rapid fire speed (quantised)
+    ticks     = 0               # MIDI ticks since transport start
+    running   = False           # MIDI transport status    
     def mode(self):
         if self.rapidFire:
             return 1
@@ -111,7 +114,7 @@ class Scheduler (threading.Thread):
             logging.debug("play note %s" % str(note))
             self.state.lastNote = note
         self.lastStrike = time.time()
-        if self.state.rapidFire and self.state.trigger: 
+        if not self.params.quant and self.state.rapidFire and self.state.trigger: 
             duration = 60.0 / self.bpm()
             self.dispatcher = self.scheduleNote(duration)
 
@@ -145,7 +148,17 @@ class Scheduler (threading.Thread):
                     self.playNote() 
                 else:                  # delay next strike
                     rest = duration - elapsed
-                    self.dispatcher = self.scheduleNote(rest)        
+                    self.dispatcher = self.scheduleNote(rest)
+
+    def setQuantisation(self):
+        axis = self.params.setSpeed
+        mods = [48, 36, 32, 24, 18, 16, 12, 8, 6, 4, 3, 2]
+        mod = 12
+        if axis <> NO_AXIS:
+            p = self.state.gyro[axis] - self.state.center[axis]
+            i = int(interp(p, [-90,0,90], [0,6,11]))
+            mod = mods[i]
+        self.state.tickMod = mod
 
     def bend(self):
         axis = self.params.setBend[self.state.mode()]
@@ -189,7 +202,10 @@ class Scheduler (threading.Thread):
         self.printStatus()
         self.setBend()
         if self.state.rapidFire:
-            self.setBPM()
+            if self.params.quant:
+                self.setQuantisation()
+            else:
+                self.setBPM()
         if self.state.trigger:
             self.setControllers()
             if not self.state.rapidFire and self.params.gliss:
@@ -257,6 +273,20 @@ class Scheduler (threading.Thread):
                 elif cmd == command.POP_NOTE:
                     self.arpeg.popNote(params)
                     logging.debug("arpeggiator pop note %i" % params)
+                elif cmd == command.TRP_START:
+                    self.state.running = True
+                    self.state.ticks = 0
+                    if self.state.rapidFire and self.params.quant and self.state.trigger:
+                        self.arpeg.reset()
+                        self.playNote()
+                    logging.debug("transport start")
+                elif cmd == command.TRP_STOP:
+                    self.state.running = False
+                    logging.debug("transport stop")
+                elif cmd == command.TRP_TICK:
+                    self.state.ticks = self.state.ticks + 1
+                    if self.state.trigger and self.state.rapidFire and self.params.quant and (self.state.ticks % self.state.tickMod == 0):
+                        self.playNote()
                 else:
                     logging.warning("Illegal command in queue")
         print "stopping scheduler"

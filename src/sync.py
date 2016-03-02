@@ -1,5 +1,7 @@
 import threading
 import Queue
+import logging
+import command
 
 #class Sync:
  
@@ -12,3 +14,10 @@ queueEvent  = threading.Event()
 
 qLock       = threading.Lock()
 queue       = Queue.Queue(100)
+
+def putCommand(cmd):
+    qLock.acquire()
+    queue.put(cmd)
+    logging.debug("send command %s" % command.cmd2str(cmd))
+    qLock.release()
+    queueEvent.set()

@@ -1,12 +1,27 @@
+import random
 
 class Arpeggiator:
-    def __init__(self):
+    def __init__(self, mode):
         self.notes = []
-        self.pattern = None
         self.index = 0
+        self.pattern = None
         self.playUp = True
         self.playDown = False
-
+        self.playRandom = False
+        if mode == 'up':
+            self.setUp()
+        elif mode == 'down':
+            self.setDown()
+        elif mode == 'random':
+            self.setRandom()
+        else:
+            def makeidx(s):
+                try:
+                    return max(0, int(s)-1)
+                except ValueError:
+                    return 0
+            self.setPattern(map(makeidx, mode.split(':')))
+            
     def pushNote(self, note):
         i = 0
         insertion = False
@@ -27,18 +42,28 @@ class Arpeggiator:
     def setUp(self):
         self.playUp = True
         self.playDown = False
+        self.playRandom = False
         self.pattern = None
         self.index = 0
         
     def setDown(self):
         self.playUp = False
         self.playDown = True
+        self.playRandom = False
         self.pattern = None
         self.index = len(self.notes) - 1
         
+    def setRandom(self):
+        self.playUp = False
+        self.playDown = False
+        self.playRandom = True
+        self.pattern = None
+        self.index = 0        
+
     def setPattern(self, pattern):
         self.playUp = False
         self.playDown = False
+        self.playRandom = False
         self.pattern = pattern
         self.index = 0
 
@@ -76,6 +101,9 @@ class Arpeggiator:
             return self.notes[self.index]
         elif self.playDown:
             self.index = (self.index - 1) % len(self.notes)
+            return self.notes[self.index]
+        elif self.playRandom:
+            self.index = random.randint(0, len(self.notes)-1)
             return self.notes[self.index]
         else:
             if len(self.pattern) == 0:

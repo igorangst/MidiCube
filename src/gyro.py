@@ -61,6 +61,9 @@ Further options that control the behavior:
                 associated axis moves by a sufficient angle
 -a --arp        arpeggio in one-shot mode
 -A --Arp        arpeggio in rapid-fire mode
+-p --pattern    arpeggiator pattern, can be 'up', 'down', 'random' or
+                a pattern of note positions separated by colons, like
+                for example 1:3:5:2:4
 -q --quant      use MIDI clock input for quantization (this 
                 only affects rapid fire mode)
 -o --oct <k>    number of octaves spanned by 90 degrees 
@@ -76,6 +79,12 @@ def parseArgs(argv):
         p.setVelocity[mode] = axis
     def setSpeed(axis):
         p.setSpeed = axis
+    def addCC(mode, axis, cc, opt):
+#        print ("add cc %i %i" % (cc, opt))
+        if mode == 0:
+            p.controllersOSM[axis].append((cc, opt))
+        else:
+            p.controllersRFI[axis].append((cc, opt))
     def setBehavior(mode, axis, beh):
         if beh == 'note':
             setNote(mode, axis)
@@ -87,19 +96,30 @@ def parseArgs(argv):
         elif beh == 'vel':
             setVelocity(mode, axis)
         else:
-            m = re.match('cc(\d+)', beh)
+            m = re.match('^cc(\d+):(free|drag|center)$', beh)
             if m:
                 cc = int(m.group(1))
-                if mode == 0:
-                    p.controllersOSM[axis].append(cc)
+                opt = m.group(2)                    
+                if opt == 'free':
+                    addCC(mode, axis, cc, CTRL_FREE)
+                elif opt == 'center':
+                    addCC(mode, axis, cc, CTRL_CENTER)
+                elif opt == 'drag':
+                    addCC(mode, axis, cc, CTRL_DRAG)
                 else:
-                    p.controllersRFI[axis].append(cc)
+                    usage()
+                    exit(2)
             else:
-                usage()
-                exit(2)
-    shortOpts = "x:y:z:X:Y:Z:s:gqaAo:m:c:"
+                m = re.match('^cc(\d+)$', beh)
+                if m:
+                    cc = int(m.group(1))
+                    addCC(mode, axis, cc, CTRL_FREE)
+                else:
+                    usage()
+                    exit(2)
+    shortOpts = "x:y:z:X:Y:Z:s:gqaAo:m:c:p:"
     longOpts = ["x=","y=","z=","X=","Y=","Z=","scale=", "chan=", "quant",
-                "gliss","arp","Arp","oct=","mac=","midiout=","midiin="]
+                "gliss","arp","Arp","oct=","mac=","midiout=","midiin=", "pattern="]
     try:
         opts, args = getopt.getopt(argv, shortOpts, longOpts)
     except getopt.GetoptError:
@@ -112,6 +132,8 @@ def parseArgs(argv):
             p.arpOSM = True
         elif opt in ["-A", "--Arp"]:
             p.arpRFI = True
+        elif opt in ["-p", "--pattern"]:
+            p.pattern = arg
         elif opt in ["-q", "--quant"]:
             p.quant = True
         elif opt in ["-o", "--oct"]:
@@ -157,7 +179,8 @@ def parseArgs(argv):
 
 args = sys.argv[1:]
 args.append("-m")
-args.append('20:14:12:17:01:67')
+# args.append('20:14:12:17:01:67')
+args.append('20:14:12:17:02:47')
 params = parseArgs(args)
 
 # initialize ALSA 

@@ -6,6 +6,10 @@ NO_AXIS = -1
 OSM_MODE = 0
 RFI_MODE = 1
 
+CTRL_FREE   = 0
+CTRL_CENTER = 1
+CTRL_DRAG   = 2
+
 class Params:
     # global options
     scale = None       # restrict notes to scale (in both modes)
@@ -13,6 +17,7 @@ class Params:
     quant = False      # quantise wrt MIDI clock (only rapid-fire mode)
     arpRFI = False     # arpeggio in rapid-fire mode
     arpOSM = False     # arpeggio in one-shot mode    
+    pattern = 'up'     # arpeggiator pattern
     octaves = 1        # number of octaves spanned by a 90 degree movement
     
     # bluetooth and alsa com options
@@ -29,7 +34,10 @@ class Params:
     setVelocity = [NO_AXIS, NO_AXIS]
     setSpeed    = X_AXIS
 
-    # controllers associated to the axes, for one-shot and rapid-fire mode
+    # controllers associated to the axes, for one-shot and rapid-fire
+    # mode each controller is associated with a controller reset mode,
+    # which can be any of CTRL_FREE, CTRL_CENTER or CTRL_DRAG.
     # TODO: use negative controller ids for reverse sense
-    controllersOSM = [[],[],[]]
-    controllersRFI = [[],[],[]]
+    controllersOSM     = [[], [], []]
+    controllersRFI     = [[], [], []]
+

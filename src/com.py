@@ -30,7 +30,7 @@ def connect(address = None, name = "LaserGun"):
     port = 1    
     sock = bluetooth.BluetoothSocket( bluetooth.RFCOMM )
     
-    with timeout(seconds = 5):
+    with timeout(seconds = 10):
         try:
             sock.connect((address, port))
         except TimeoutError:

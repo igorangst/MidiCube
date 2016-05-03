@@ -15,10 +15,40 @@ import arpeg
 from util import *
 from params import *
 
+class Controller:
+    def __init__(self, axis=NO_AXIS, cc=0, mode=CTRL_CENTER):
+        self.axis = axis
+        self.cc = cc
+        self.mode = mode
+        self.center = 0.0
+        self.value = -1
+
+    # set center position depending on controller mode
+    def recenter(self, pos):
+        if self.mode == CTRL_CENTER:
+            self.center = pos
+        elif self.mode == CTRL_DRAG:
+            self.center = pos - interp(self.value, [0,127], [-90,90])
+
+    # set to new position, returns True if value changed, False otherwise
+    def update(self, pos):
+        angle = pos - self.center
+        if self.mode == CTRL_FREE:
+            if angle > 90:
+                self.center = pos - 90
+            elif angle < -90:
+                self.center = pos + 90
+        newvalue = int(interp(angle, [-90,90], [0,127]))
+        if newvalue != self.value:
+            self.value = newvalue
+            return True
+        else:
+            return False
+
 class State:
     gyro      = [0.0, 0.0, 0.0] # x,y,z positions
     center    = [0.0, 0.0, 0.0] # x,y,z positions at last trigger time
-    ccs       = {}              # mapped controller positions
+    ccs       = [[],[]]         # controllers in one shot and rapid fire mode
     rapidFire = False           # 1 = single shot, 2 = rapid fire
     trigger   = False           # trigger is on
     lastNote  = None            # last note played
@@ -42,13 +72,14 @@ class Scheduler (threading.Thread):
         self.dispatcher = None
         self.lastStrike = None
         self.state = State()
-        self.arpeg = arpeg.Arpeggiator()
-        ccs = []
-        for i in range(0,3): # collect all controllers
-            ccs += self.params.controllersOSM[i]
-            ccs += self.params.controllersRFI[i]
-        for k in ccs:
-            self.state.ccs[k] = 64
+        self.arpeg = arpeg.Arpeggiator(params.pattern)
+        for axis in range(0,3): # collect all controllers
+            for (k,m) in self.params.controllersOSM[axis]:
+                cc = Controller(axis=axis, cc=k, mode=m)
+                self.state.ccs[0].append(cc)
+            for (k,m) in self.params.controllersRFI[axis]:
+                cc = Controller(axis=axis, cc=k, mode=m)
+                self.state.ccs[1].append(cc)
 
     def printStatus(self):
         def bool2str(b):
@@ -56,13 +87,13 @@ class Scheduler (threading.Thread):
                 return '*'
             else:
                 return ' '
-        sys.stdout.write("[X:%6.1f Y:%6.1f Z:%6.1f] [TRG: %s] [RFI: %s] [BEND: %5i]\r (Arp: %i)" 
+        sys.stdout.write("[X:%6.1f Y:%6.1f Z:%6.1f] [TRG: %s] [RFI: %s] [BEND: %5i] [ARP: %i] [Pitch center: %6.1f]\r" 
                          % (self.state.gyro[0], 
                             self.state.gyro[1], 
                             self.state.gyro[2], 
                             bool2str(self.state.trigger),
                             bool2str(self.state.rapidFire),
-                            self.state.bend, len(self.arpeg.notes)))
+                            self.state.bend, len(self.arpeg.notes), self.state.pitchOffs))
         sys.stdout.flush()
 
     def pitch(self):
@@ -70,6 +101,7 @@ class Scheduler (threading.Thread):
         if self.state.rapidFire and self.params.arpRFI:
             # Arpeggiator
             if axis != NO_AXIS:
+                self.reframePitch()
                 angle = self.state.gyro[axis] - self.state.pitchOffs
                 shift = int(interp(angle, [-90,90], [-8,8]))
             else:
@@ -85,10 +117,22 @@ class Scheduler (threading.Thread):
             if axis == NO_AXIS:
                 return 36   # MIDI value for C2
             else:
+                self.reframePitch()
                 angle = self.state.gyro[axis] - self.state.pitchOffs
                 noteIndex = int(interp(angle, [-90,90], [-noteRange, noteRange]))
                 return noteOnScale(self.params.scale, noteIndex)
 
+    # check if pitch axis is out of [-90,90] range and recenter if necessary
+    def reframePitch(self):
+        axis = self.params.setNote[self.state.mode()]
+        if axis != NO_AXIS:
+            angle = self.state.gyro[axis] - self.state.pitchOffs
+            if angle > 90:
+                self.state.pitchOffs = self.state.gyro[axis] - 90
+            elif angle < -90:
+                self.state.pitchOffs = self.state.gyro[axis] + 90
+
+    # set center pitch to current gyro position
     def centerPitch(self):
         axis = self.params.setNote[self.state.mode()]
         if axis == NO_AXIS:
@@ -172,7 +216,7 @@ class Scheduler (threading.Thread):
         newBend = self.bend()
         if self.state.bend != newBend:
             self.state.bend = newBend
-            alsaseq.output(pitchBendEvent(newBend, chan=self.params.midiChan))        
+            alsaseq.output(pitchBendEvent(newBend, chan=self.params.midiChan))
 
     def resetBend(self):
         axis = self.params.setBend[self.state.mode()]
@@ -180,22 +224,17 @@ class Scheduler (threading.Thread):
             self.state.bendOffs = self.state.gyro[axis]
             self.state.bend = 8192
             alsaseq.output(pitchBendEvent(self.state.bend, chan=self.params.midiChan))
+    
+    def centerControllers(self):
+        ccs = self.state.ccs[self.state.mode()]
+        for cc in ccs:
+            cc.recenter(self.state.gyro[cc.axis])        
 
     def setControllers(self):
-        def setAxisControllers(axis):
-            if self.state.rapidFire:
-                ccs = self.params.controllersRFI[axis]
-            else:
-                ccs = self.params.controllersOSM[axis]
-            centered = self.state.gyro[axis] - self.state.center[axis]
-            newValue = int(interp(centered, [-90,90], [0,127]))
-            for k in ccs:
-                oldValue = self.state.ccs[k]
-                if newValue != oldValue:
-                    self.state.ccs[k] = newValue
-                    alsaseq.output(ccEvent(k, newValue, chan=self.params.midiChan))
-        for axis in range(0,3):
-            setAxisControllers(axis)                                    
+        ccs = self.state.ccs[self.state.mode()]
+        for cc in ccs:
+            if cc.update(self.state.gyro[cc.axis]):
+                alsaseq.output(ccEvent(cc.cc, cc.value, chan=self.params.midiChan))
 
     def setPos(self, x, y, z):
         self.state.gyro = [x, y, z]
@@ -230,7 +269,8 @@ class Scheduler (threading.Thread):
                     if not self.state.trigger:
                         self.state.trigger = True
                         self.resetBend()
-                        self.state.center = self.state.gyro # FIXME: reset controls?
+                        self.state.center = self.state.gyro 
+                        self.centerControllers()
                         self.arpeg.reset()
                         self.playNote()                    
                 elif cmd == command.TRG_OFF:
@@ -246,22 +286,22 @@ class Scheduler (threading.Thread):
                     logging.debug("received RFI_ON")
                     if not self.state.rapidFire:
                         self.state.rapidFire = True
-                        # FIXME: recenter pitch on mode change for now
                         self.centerPitch()
                         if self.state.trigger:
+                            self.centerControllers()
                             self.arpeg.reset()
                             self.playNote()
                 elif cmd == command.RFI_OFF:
                     logging.debug("received RFI_OFF")
                     if self.state.rapidFire:
                         self.state.rapidFire = False
-                        # FIXME: recenter pitch on mode change for now
                         self.centerPitch()
                         if self.dispatcher:
                             self.dispatcher.cancel()
                             self.dispatcher = None
                             logging.debug("cancel dispatched note")
                         if self.state.trigger:
+                            self.centerControllers()
                             self.playNote()
                 elif cmd == command.SET_POS:
                     logging.debug("received SET_POS")

@@ -6,6 +6,9 @@ import re
 class TimeoutError(Exception):
     pass
 
+class DisconnectError(Exception):
+    pass
+
 class timeout:
     def __init__(self, seconds=1, error_message='Timeout'):
         self.seconds = seconds
@@ -68,6 +71,12 @@ basicNote = {'c' : 36,
              'b' : 47,
              'h' : 47}
 
+# get MIDI code for a given note and octave
+def getNote(note, octave):
+    note = note.lower()
+    base = basicNote.get(note, 36) - 36
+    return base + 12*octave
+
 # get MIDI code for a note restricted to a specific scale.
 # note = 0 returns the basic note, negative and positive values 
 # will move down and up on the scale
@@ -80,12 +89,14 @@ def noteOnScale(scale = None, note = 0):
     scale = scale.lower()
     base = basicNote.get(scale, 36)
     baseOctave = base + 12 * (note / 7)
+    def frameNote(x):
+        return max(1, min(127, x))
     if isMajor:
         # major scale
-        return baseOctave + majorScale[note % 7]
+        return frameNote(baseOctave + majorScale[note % 7])
     else:
         # minor scale
-        return baseOctave + minorScale[note % 7]
+        return frameNote(baseOctave + minorScale[note % 7])
 
 
 

@@ -8,7 +8,7 @@ import sync
 # target_name = "LaserGun"
 # target_address = '20:14:12:17:01:67'
 
-def connect(address = None, name = "LaserGun"):
+def connect(address = None, name = "MidiCube"):
     if address is None:
         logging.info("scanning for nearby devices...")
         try:
@@ -21,9 +21,9 @@ def connect(address = None, name = "LaserGun"):
                 address = bdaddr
                 break
         if address is not None:
-            logging.info("found laser gun with address %i" % address)
+            logging.info("found MIDI cube with address %i" % address)
         else:
-            print "could not find laser gun nearby"
+            print "could not find MIDI cube nearby"
             return None
     
     logging.info("connecting to device...")
@@ -40,7 +40,7 @@ def connect(address = None, name = "LaserGun"):
         except bluetooth.btcommon.BluetoothError as e:
             logging.error(str(e))
             return None            
-    logging.info("connection to laser gun established")
+    logging.info("connection to MIDI cube established")
 
     sock.setblocking(0)
     return sock
@@ -58,16 +58,10 @@ def handShake(sock, msg, okEvent, errorMsg="response timed out", succMsg=None):
         logging.error(errorMsg)
         return False
 
-def resetGun(sock):
-    return handShake(sock, "RST\n", sync.resetOK, succMsg="[*] Reset OK")
-
-def calibrateGun(sock):
-    return handShake(sock, "CAL\n", sync.calibrateOK, succMsg="[*] Calibrate OK")
-
-def startGun(sock):
+def startCube(sock):
     return handShake(sock, "RUN\n", sync.runOK, succMsg="[*] Start OK")
 
-def stopGun(sock):
+def stopCube(sock):
     return handShake(sock, "STP\n", sync.stopOK, succMsg="[*] Stop OK")
 
 def requestStatus(sock):

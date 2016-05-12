@@ -17,7 +17,7 @@ from util import *
 from params import *
 
 class LFO:
-    def __init__(self, cc, params):
+    def __init__(self, cc, wav, params):
         self.cc = cc           # index of MIDI controller to write
         self.params = params   # global parameters
         self.value = 0         # current value of MIDI cc
@@ -25,15 +25,36 @@ class LFO:
         self.rate = 67         # sample rate
         self.period = 1.0 / self.rate # sample period
         self.resolution = 256  # samples per period      
-        self.tick = 0          # discrete time measure (once per sample)
+        self.tick = 0.0        # local time measure (once per sample)
         self.dispatcher = None # timer to trigger value changes
-        self.initSamples()
+        self.initSamples(wav)
     
-    def initSamples(self):
-        step = 2*pi / self.resolution
-        def makeSample(x):
-            return int(interp(sin(x*step), [-1,1], [0,127]))
-        self.samples = map(makeSample, range(0, self.resolution))
+    def initSamples(self, wav):
+        self.samples = []
+        if wav == 'sin':
+            step = 2*pi / self.resolution
+            def makeSample(x):
+                return int(interp(sin(x*step), [-1,1], [0,127]))
+            self.samples = map(makeSample, range(0, self.resolution))
+        elif wav == 'tri':
+            xkeys = [0, 0.25*self.resolution, 0.75*self.resolution, self.resolution]
+            ykeys = [64, 127, 0, 64]
+            def makeSample(x):
+                return int(interp(x, xkeys, ykeys))
+            self.samples = map(makeSample, range(0, self.resolution))
+        elif wav == 'saw':
+            def makeSample(x):
+                return (64 + int(interp(x, [0, self.resolution], [0, 127]))) % 128
+            self.samples = map(makeSample, range(0, self.resolution))
+        elif wav == 'sqr':
+            def makeSample(x):
+                if x < 0.5*self.resolution:
+                    return 127
+                else:
+                    return 0
+            self.samples = map(makeSample, range(0, self.resolution))
+        else:
+            self.samples = [0]*self.resolution
 
     def stop(self):
         if self.dispatcher:
@@ -42,8 +63,8 @@ class LFO:
 
     def sample(self):
         # increase time wrt last sample time
-        self.tick = int(self.tick + self.period * self.resolution * self.freq) % self.resolution
-        newValue = self.samples[self.tick]
+        self.tick = (self.tick + self.period * self.resolution * self.freq) % self.resolution
+        newValue = self.samples[int(self.tick)]
         if self.value <> newValue:
             self.value = newValue
             alsaseq.output(ccEvent(self.cc, self.value, chan=self.params.midiChan))
@@ -78,8 +99,9 @@ class Scheduler (threading.Thread):
         self.lastNote   = None
         self.state = State()
         self.arpeg = arpeg.Arpeggiator(params.pattern)
-        for cc in params.lfos:
-            self.state.lfos.append(LFO(cc, params))
+        for lfo in params.lfos:
+            cc, wav = lfo
+            self.state.lfos.append(LFO(cc, wav, params))
 
     def printStatus(self):
         def bool2str(b):

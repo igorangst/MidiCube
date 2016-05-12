@@ -46,12 +46,14 @@ Global options:
 Behavior control:
 -b <beh> --behavior add behavior to poti, where <beh> can be any of the following: 
     
-note       select pitch of played note
-bend       pitch bend control
-cc<i>      MIDI controller #i 
-lfo<i>     Low frequency oscillator on MIDI controller #i
-vel        velocity of played note
-speed      set speed for arpeggiator
+note         select pitch of played note
+bend         pitch bend control
+vel          velocity of played note
+speed        set speed for arpeggiator
+cc<i>        MIDI controller #i 
+lfo<i>       Low frequency oscillator (sine wave) on MIDI controller #i
+lfo<i>:<wav> Low frequency oscillator with specified wave form, where <wav> can
+             be sin (sine wave), tri (triangle), saw (sawtooth), sqr (square).
     
 Further options that control the behavior:
 -s --scale 'D#' restricts played notes to the D# major scale
@@ -84,10 +86,20 @@ def parseArgs(argv):
                 cc = int(m.group(1))
                 p.controllers.append(cc)
                 return
+            m = re.match('^lfo(\d+):([a-z]+)$', beh)
+            if m:
+                cc = int(m.group(1))
+                wav = m.group(2)
+                if not wav in ['sin', 'tri', 'saw', 'sqr']:
+                    print "Unknown wave form '" + wav + "'"
+                    usage()
+                    exit(2)
+                p.lfos.append((cc, wav))
+                return
             m = re.match('^lfo(\d+)$', beh)
             if m:
                 cc = int(m.group(1))
-                p.lfos.append(cc)
+                p.lfos.append((cc, 'sin'))
                 return
             usage()
             exit(2)

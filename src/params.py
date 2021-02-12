@@ -1,12 +1,16 @@
 class Params:
     # global options
-    scale = None       # restrict notes to scale 
+    scale = None       # restrict notes to scale
+    rang = None        # restrict notes to range
     gliss = False      # glissando 
+    legato = False     # legato
     quant = False      # quantise wrt MIDI clock (only arpeggio mode)
     arp   = False      # arpeggio mode
     pattern = 'up'     # arpeggiator pattern
     octaves = 1        # number of octaves spanned by a 90 degree movement
     note = 36          # fixed note
+    gamma = None       # poti curve correction
+    triggerCCs = []    # cc events on trigger
     
     # bluetooth and alsa com options
     btMAC = None

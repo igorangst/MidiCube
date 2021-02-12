@@ -36,7 +36,11 @@ class Note:
             return False
         return True
 
+# control event, invert value on negative control index
 def ccEvent(cc, val, chan=1):
+    if cc < 0:
+        cc = abs(cc)
+        val = 127-val
     return (10, 0, 0, 253, (0, 0), (0, 0), (0, 0), 
             (chan-1, 0, 0, 0, cc, val))
 
@@ -50,10 +54,11 @@ def noteOffEvent(note, chan=1):
 
 def pitchBendEvent(pitch, chan=1):
     return (13, 0, 0, 253, (0, 0), (0, 0), (0, 0), 
-            (0, 61, 0, 0, 0, pitch-8192))
+            (chan-1, 61, 0, 0, 0, pitch-8192))
 
 majorScale = [0, 2, 4, 5, 7, 9, 11]
 minorScale = [0, 2, 3, 5, 7, 8, 10]
+pentaScale = [0, 3, 5, 7, 10]
 
 noteNames = ['c', 'c#', 'd', 'd#', 'e', 'f', 
              'f#', 'g', 'g#', 'a', 'a#', 'b']
@@ -80,25 +85,30 @@ def getNote(note, octave):
 # get MIDI code for a note restricted to a specific scale.
 # note = 0 returns the basic note, negative and positive values 
 # will move down and up on the scale
-def noteOnScale(scale = None, note = 0):
-    if scale is None:
+def noteOnScale(key = None, note = 0):
+    if key is None:
         # chromatic scale
         return basicNote.get('c') + note
 
-    isMajor = scale[0].isupper()
-    scale = scale.lower()
-    base = basicNote.get(scale, 36)
-    baseOctave = base + 12 * (note / 7)
+    m = re.match('^([a-hA-H]#?)(5?)$', key)
+    if not m:
+        # chromatic scale
+        return basicNote.get('c') + note
+
+    if m.group(2):
+        scale = pentaScale
+    elif key[0].isupper():
+        scale = majorScale
+    else:
+        scale = minorScale
+    
+    tonality = m.group(1)
+    base = basicNote.get(tonality.lower(), 36)
+    baseOctave = base + 12 * (note / len(scale))
     def frameNote(x):
         return max(1, min(127, x))
-    if isMajor:
-        # major scale
-        return frameNote(baseOctave + majorScale[note % 7])
-    else:
-        # minor scale
-        return frameNote(baseOctave + minorScale[note % 7])
-
-
+    return frameNote(baseOctave + scale[note % len(scale)])
+    
 
 # get a dictionary of all active MIDI devices, mapping names to device numbers
 def midiDevices():

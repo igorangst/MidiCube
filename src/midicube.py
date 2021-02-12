@@ -19,7 +19,7 @@ import command
 import util
 
 
-# logging.basicConfig(filename='debug.log',level=logging.DEBUG)
+logging.basicConfig(filename='debug.log',level=logging.DEBUG)
 
 def terminate():
     print 'Interrupted'
@@ -54,12 +54,18 @@ cc<i>        MIDI controller #i
 lfo<i>       Low frequency oscillator (sine wave) on MIDI controller #i
 lfo<i>:<wav> Low frequency oscillator with specified wave form, where <wav> can
              be sin (sine wave), tri (triangle), saw (sawtooth), sqr (square).
-    
+wah<i>       Auto Wah on Midi controller #i. This corresponds to a sine wave LFO
+             centered on value 64, controlling both frequency and amplitude.
+
 Further options that control the behavior:
--s --scale 'D#' restricts played notes to the D# major scale
+-s --scale 'D#' restricts played notes to the D# major scale. Legal scales are
+                minor (like 'a'), major (like 'F#') and pentatonic (like 'A5')
+-r --range a:b  restrict played notes to a chromatic range between a and b, 
+                which can be MIDI note numbers or strings like 'F#3'
 -n --note C2    fixed note (overwritten by note behavior), can be either a
                 MIDI note number (like 36) or a string like 'F#3' 
 -g --gliss      plays a new note once the poti moves by a sufficient angle
+-l --legato     play legato, i.e. play next note befor stopping the previous one
 -a --arp        arpeggio on incoming notes
 -p --pattern    arpeggiator pattern, can be 'up', 'down', 'random' or
                 a pattern of note positions separated by colons, like
@@ -67,6 +73,8 @@ Further options that control the behavior:
 -q --quant      use MIDI clock input for quantization (this 
                 only affects arpeggio mode)
 -o --oct <k>    number of octaves spanned by the poti
+-G --gamma <x>  correct poti curve using power function with power x
+-t --trig cc<i> add cc events (127/0) to note on/off events
 """
 
 def parseArgs(argv):
@@ -101,6 +109,11 @@ def parseArgs(argv):
                 cc = int(m.group(1))
                 p.lfos.append((cc, 'sin'))
                 return
+            m = re.match('^wah(\d+)$', beh)
+            if m:
+                cc = int(m.group(1))
+                p.lfos.append((cc, 'wah'))
+                return
             usage()
             exit(2)
     def setNote(s):
@@ -116,9 +129,33 @@ def parseArgs(argv):
             return
         usage()
         exit(2)
-    shortOpts = "b:s:gqao:n:m:c:p:"
-    longOpts = ["behavior=","scale=", "chan=", "quant", "note=", 
-                "gliss","arp","oct=","mac=","midiout=","midiin=", "pattern="]
+    def setRange(s):
+        m = re.match('^(\d+):(\d+)$', s)
+        if m:
+            p.rang = (int(m.group(1)), int(m.group(2)))
+            return
+        m = re.match('^([a-hA-H]#?)(\d):([a-hA-H]#?)(\d)$',s)
+        if m:
+            n1 = m.group(1)
+            o1 = int(m.group(2))
+            n2 = m.group(3)
+            o2 = int(m.group(4))
+            p.rang = (util.getNote(n1,o1), util.getNote(n2,o2))
+            return
+        usage()
+        exit(2)
+    def addTrigger(s):
+        m = re.match('^-?cc(\d+)$', s)
+        if m:
+            inv = s.startswith('-')
+            sgn = -1*inv + 1*(not inv)
+            p.triggerCCs.append(sgn*int(m.group(1))) 
+        else:
+            usage()
+            exit(2)
+    shortOpts = "b:s:glqao:n:m:c:p:G:t:r:"
+    longOpts = ["behavior=","scale=","range=","chan=","quant","note=","gamma=","legato", 
+                "gliss","arp","oct=","mac=","midiout=","midiin=", "pattern=","trig="]
     try:
         opts, args = getopt.getopt(argv, shortOpts, longOpts)
     except getopt.GetoptError:
@@ -127,6 +164,8 @@ def parseArgs(argv):
     for opt,arg in opts:
         if opt in ["-g", "--gliss"]:
             p.gliss = True
+        elif opt in ["-l", "--legato"]:
+            p.legate = True
         elif opt in ["-a", "--arp"]:
             p.arp = True
         elif opt in ["-p", "--pattern"]:
@@ -139,12 +178,18 @@ def parseArgs(argv):
             p.scale = str(arg)
         elif opt in ["-n", "--note"]:
             setNote(arg)
+        elif opt in ["-r", "--range"]:
+            setRange(arg)
         elif opt in ["-b", "--behavior"]:
-            addBehavior(arg)        
+            addBehavior(arg)
+        elif opt in ["-t", "--trig"]:
+            addTrigger(arg)
         elif opt in ["-m", "--mac"]:
             p.btMAC = arg
         elif opt in ["-c", "--chan"]:
             p.midiChan = int(arg)
+        elif opt in ["-G", "--gamma"]:
+            p.gamma = float(arg)
         elif opt == "--midiout":
             m = re.match('(\d+):(\d+)', arg)
             if m:
@@ -193,6 +238,7 @@ alsain = alsaInput()
 
 scheduler.start()
 listener.start()
+alsain.start()
 time.sleep(1)
 
 com.stopCube(sock)

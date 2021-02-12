@@ -18,24 +18,28 @@ from params import *
 
 class LFO:
     def __init__(self, cc, wav, params):
+        self.wav = wav         # Waveform
         self.cc = cc           # index of MIDI controller to write
         self.params = params   # global parameters
         self.value = 0         # current value of MIDI cc
         self.freq = 1.0        # LFO frequency in Hz
+        self.amplitude = 1.0   # LFO amplitude
         self.rate = 67         # sample rate
         self.period = 1.0 / self.rate # sample period
-        self.resolution = 256  # samples per period      
+        self.resolution = 256  # samples per period
         self.tick = 0.0        # local time measure (once per sample)
         self.dispatcher = None # timer to trigger value changes
         self.initSamples(wav)
-    
+
     def initSamples(self, wav):
         self.samples = []
-        if wav == 'sin':
+        if wav in ['sin', 'wah']:
             step = 2*pi / self.resolution
             def makeSample(x):
                 return int(interp(sin(x*step), [-1,1], [0,127]))
             self.samples = map(makeSample, range(0, self.resolution))
+            if wav == 'wah':
+                self.amplitude = 0.0
         elif wav == 'tri':
             xkeys = [0, 0.25*self.resolution, 0.75*self.resolution, self.resolution]
             ykeys = [64, 127, 0, 64]
@@ -64,7 +68,7 @@ class LFO:
     def sample(self):
         # increase time wrt last sample time
         self.tick = (self.tick + self.period * self.resolution * self.freq) % self.resolution
-        newValue = self.samples[int(self.tick)]
+        newValue = 64 + int(self.amplitude * (self.samples[int(self.tick)] - 64))
         if self.value <> newValue:
             self.value = newValue
             alsaseq.output(ccEvent(self.cc, self.value, chan=self.params.midiChan))
@@ -76,6 +80,9 @@ class LFO:
 
     def setFrequency(self, f):
         self.freq = f
+
+    def setAmplitude(self, a):
+        self.amplitude = a
 
 class State:
     pot       = 0               # poti position
@@ -127,8 +134,11 @@ class Scheduler (threading.Thread):
             else:
                 noteRange = 7 * self.params.octaves
             if self.params.setNote:
-                noteIndex = int(interp(self.state.pot, [0,1023], [-noteRange,noteRange]))
-                return noteOnScale(self.params.scale, noteIndex)
+                if self.params.rang:
+                    return int(interp(self.state.pot, [0, 1023], [self.params.rang[0], self.params.rang[1]]))
+                else:
+                    noteIndex = int(interp(self.state.pot, [0,1023], [-noteRange,noteRange]))
+                    return noteOnScale(self.params.scale, noteIndex)
             else:
                 return self.params.note
 
@@ -138,16 +148,23 @@ class Scheduler (threading.Thread):
         else:
             alsaseq.output(noteOffEvent(self.lastNote, chan=self.params.midiChan))
             self.lastNote = None
+            for cc in self.params.triggerCCs:
+                alsaseq.output(ccEvent(cc, 0, chan=self.params.midiChan))
             logging.debug("stop note %s" % str(self.lastNote))
 
     def playNote(self):
         if self.lastNote:
-            self.stopNote()
             self.arpeg.next()
+        if not self.params.legato: 
+            self.stopNote()
         note = Note(self.pitch())
         if note.valid():
             alsaseq.output(noteOnEvent(note, chan=self.params.midiChan))
+            for cc in self.params.triggerCCs:
+                alsaseq.output(ccEvent(cc, 127, chan=self.params.midiChan))
             logging.debug("play note %s" % str(note))
+            if (self.params.legato):
+                self.stopNote()
             self.lastNote = note
         self.lastStrike = time.time()
         if not self.params.quant and self.params.arp: 
@@ -223,9 +240,19 @@ class Scheduler (threading.Thread):
         freq = interp(self.state.pot, [0,1023], [0.1, 8])
         for lfo in self.state.lfos:
             lfo.setFrequency(freq)
+            if lfo.wav == 'wah':
+                amp = interp(self.state.pot, [0,1023], [0.0, 1.0])
+                lfo.setAmplitude(amp)
+
+    # Gamma correction
+    def curve(self, pot):
+        if not self.params.gamma:
+            return pot
+        else:
+            return int((pot/1023.0)**self.params.gamma * 1023)
 
     def setPoti(self, x):
-        self.state.pot = x
+        self.state.pot = self.curve(x)
         self.printStatus()
         self.setBend()
         self.setFreq()
@@ -240,7 +267,6 @@ class Scheduler (threading.Thread):
                 newPitch = self.pitch()
                 if self.lastNote is not None:
                     if newPitch != self.lastNote.pitch:
-                        self.stopNote()
                         self.resetBend()
                         self.playNote()                    
 
